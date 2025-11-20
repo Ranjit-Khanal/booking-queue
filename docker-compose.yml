@@ -1,0 +1,185 @@
+version: '3.8'
+
+services:
+  # Redis for BullMQ and Redis Streams
+  redis:
+    image: redis:7-alpine
+    container_name: booking-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: booking-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: booking-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # API Service
+  api-service:
+    build:
+      context: .
+      dockerfile: ./api-service/Dockerfile
+    container_name: booking-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9093
+      - QUEUE_SERVICE_URL=http://queue-service:3001
+      - STREAM_SERVICE_URL=http://stream-service:3002
+      - KAFKA_SERVICE_URL=http://kafka-service:3003
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./api-service:/app
+      - ./shared:/app/shared
+      - /app/node_modules
+
+  # BullMQ Queue Service
+  queue-service:
+    build:
+      context: .
+      dockerfile: ./queue-service/Dockerfile
+    container_name: booking-queue-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./queue-service:/app
+      - /app/node_modules
+
+  # Redis Streams Service
+  stream-service:
+    build:
+      context: .
+      dockerfile: ./stream-service/Dockerfile
+    container_name: booking-stream-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./stream-service:/app
+      - /app/node_modules
+
+  # Kafka Service
+  kafka-service:
+    build:
+      context: .
+      dockerfile: ./kafka-service/Dockerfile
+    container_name: booking-kafka-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - KAFKA_BROKER=kafka:9093
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./kafka-service:/app
+      - /app/node_modules
+
+  # Worker Service (can be scaled)
+  worker-service:
+    build:
+      context: .
+      dockerfile: ./worker-service/Dockerfile
+    container_name: booking-worker-service
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9093
+      - WORKER_ID=worker-1
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./worker-service:/app
+      - /app/node_modules
+    deploy:
+      replicas: 2  # Can scale horizontally
+
+  # Monitoring Service
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: ./monitoring-service/Dockerfile
+    container_name: booking-monitoring
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKER=kafka:9093
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./monitoring-service:/app
+      - /app/node_modules
+
+volumes:
+  redis-data:
