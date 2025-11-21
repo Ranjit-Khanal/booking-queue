@@ -1,26 +1,35 @@
 FROM node:18-alpine
 
-WORKDIR /app
-
-# Build shared package first
-COPY shared/package*.json ./shared/
-COPY shared/tsconfig.json ./shared/
-COPY shared/src ./shared/src
+# Build shared package first (optimized for layer caching)
 WORKDIR /app/shared
-RUN npm install && npm run build
+
+# Copy package files first (for dependency caching)
+COPY shared/package*.json ./
+
+# Install dependencies (this layer will be cached if package.json doesn't change)
+RUN npm install
+
+# Copy config and source files (after dependencies are installed)
+COPY shared/tsconfig.json ./
+COPY shared/src ./src
+
+# Build shared package
+RUN npm run build
+
+# Switch to app directory for service build
 WORKDIR /app
 
 # Copy root config (relative path for extends)
 COPY tsconfig.base.json ./tsconfig.base.json
 
-# Copy package files
+# Copy service package files first (for dependency caching)
 COPY monitoring-service/package*.json ./
 COPY monitoring-service/tsconfig.json ./
 
-# Install dependencies
+# Install service dependencies (this layer will be cached if package.json doesn't change)
 RUN npm install
 
-# Copy source files
+# Copy service source files (after dependencies are installed)
 COPY monitoring-service/src ./src
 
 # Build TypeScript
