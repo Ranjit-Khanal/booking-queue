@@ -3,6 +3,16 @@ import { bookingApi } from '../services/api';
 import type { BookingStatus as BookingStatusType } from '../types';
 import '../styles/BookingStatus.css';
 
+/**
+ * Render a UI to check and display a booking's status across BullMQ, Redis Streams, and Kafka.
+ *
+ * Manages local input, loading, error, and fetched status state; submits a booking ID to retrieve
+ * status information and presents per-queue details such as state, progress, attempts, errors,
+ * return value, stream IDs, partitions, and offsets.
+ *
+ * @returns The component's JSX output containing the booking ID form, optional error message,
+ * and detailed status cards for each supported queue system.
+ */
 export default function BookingStatus() {
   const [bookingId, setBookingId] = useState('');
   const [status, setStatus] = useState<BookingStatusType | null>(null);
@@ -177,4 +187,3 @@ export default function BookingStatus() {
     </div>
   );
 }
-

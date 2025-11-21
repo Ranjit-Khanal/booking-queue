@@ -132,6 +132,13 @@ async function initializeStreamConsumerGroup(): Promise<void> {
   }
 }
 
+/**
+ * Reads and processes messages from the Redis stream consumer group, handling booking workflows.
+ *
+ * For each message it parses the `data` payload, runs the booking processing steps, and acknowledges successful messages.
+ * On processing errors it checks a `retryCount` field: messages with fewer than 3 attempts are left unacknowledged for retry, and messages that reached 3 attempts are moved to the DLQ with error metadata and then acknowledged.
+ * Read-time timeout errors are ignored; other read errors are logged.
+ */
 async function processStreamMessages(): Promise<void> {
   try {
     // Read messages from stream using consumer group
@@ -212,7 +219,11 @@ async function processStreamMessages(): Promise<void> {
   }
 }
 
-// Process pending messages (from PEL)
+/**
+ * Claim and reprocess Redis Stream pending entries assigned to this consumer that have been idle for more than 60 seconds.
+ *
+ * Scans the pending entries list (PEL) for this consumer group, claims eligible messages for this consumer, and triggers their processing. Errors encountered during the operation are logged.
+ */
 async function processPendingMessages(): Promise<void> {
   try {
     const pending = await redisConnection.xpending(STREAM_NAME, CONSUMER_GROUP, '-', '+', 10) as Array<[string, string, string, string]> | null;
@@ -268,6 +279,11 @@ const consumer: Consumer = kafka.consumer({ groupId: 'booking-workers' });
 const TOPIC = 'booking-events';
 const DLQ_TOPIC = 'booking-events-dlq';
 
+/**
+ * Starts the Kafka consumer and producer, processes booking messages from the configured topic, and forwards failed messages to the DLQ.
+ *
+ * The consumer is connected and subscribed to the configured topic, and an internal message handler performs the booking processing steps for each message. If processing fails, the original message and error metadata are published to the configured DLQ topic.
+ */
 async function startKafkaWorker(): Promise<void> {
   await consumer.connect();
   await consumer.subscribe({ topic: TOPIC, fromBeginning: false });
@@ -366,4 +382,3 @@ start().catch((error: Error) => {
   logger.error('Failed to start workers:', error);
   process.exit(1);
 });
-

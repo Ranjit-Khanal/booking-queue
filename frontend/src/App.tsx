@@ -5,6 +5,13 @@ import Dashboard from './pages/Dashboard';
 import BookingStatus from './pages/BookingStatus';
 import './styles/App.css';
 
+/**
+ * Root application component that sets up routing, top-level layout, and navigation for the booking system.
+ *
+ * The component renders a header, a navigation bar with three links (Dashboard, Create Booking, Check Status) whose visual active state is tracked via local `activeTab` state, a main area that maps routes to `Dashboard`, `BookingForm`, and `BookingStatus` pages, and a footer.
+ *
+ * @returns The application's root JSX element containing the Router, layout, navigation, and routed pages.
+ */
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -65,4 +72,3 @@ function App() {
 }
 
 export default App;
-
