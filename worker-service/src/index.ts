@@ -1,9 +1,9 @@
-import { Worker, Queue, Job } from 'bullmq';
+import { Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import { Kafka, Consumer, Producer, EachMessagePayload } from 'kafkajs';
 import winston from 'winston';
-import dotenv from 'dotenv';
-import { BookingData } from '../../shared/types';
+import * as dotenv from 'dotenv';
+import { BookingData } from '@shared/index';
 
 dotenv.config();
 
@@ -32,7 +32,7 @@ const redisConnection = new Redis({
 });
 
 // ==================== BULLMQ WORKER ====================
-const bookingQueue = new Queue('booking-queue', { connection: redisConnection });
+// const bookingQueue = new Queue('booking-queue', { connection: redisConnection });
 
 interface BookingJobData extends BookingData {
   jobId: string;
@@ -53,7 +53,7 @@ const bullmqWorker = new Worker(
     logger.info(`[BullMQ] Processing job ${job.id}`, { workerId: WORKER_ID, jobId: job.id });
     
     try {
-      const { bookingId, userId, hotelId, checkIn, checkOut } = job.data;
+      const { bookingId } = job.data;
       
       // Simulate booking processing steps
       await job.updateProgress(10);
@@ -146,7 +146,7 @@ async function processStreamMessages(): Promise<void> {
       return;
     }
 
-    const [stream, streamMessages] = messages[0];
+    const [_stream, streamMessages] = messages[0];
     
     for (const [messageId, fields] of streamMessages) {
       try {
@@ -159,7 +159,7 @@ async function processStreamMessages(): Promise<void> {
         }
         
         const data: BookingData = JSON.parse(messageData.data);
-        const { bookingId, userId, hotelId, checkIn, checkOut } = data;
+        const { bookingId } = data;
         
         // Process booking (same logic as BullMQ)
         await simulateWork(2000); // Validate
@@ -180,7 +180,7 @@ async function processStreamMessages(): Promise<void> {
         logger.error(`[Streams] Error processing message ${messageId}:`, err);
         
         // Check retry count (stored in message metadata)
-        const retryCountField = fields.find((f, i) => fields[i - 1] === 'retryCount');
+        const retryCountField = fields.find((_f, i) => fields[i - 1] === 'retryCount');
         const retryCount = parseInt(retryCountField || '0');
         
         if (retryCount < 3) {
@@ -188,7 +188,7 @@ async function processStreamMessages(): Promise<void> {
           logger.info(`[Streams] Message ${messageId} will be retried (attempt ${retryCount + 1})`);
         } else {
           // Max retries reached, move to DLQ
-          const dataField = fields.find((f, i) => fields[i - 1] === 'data');
+          const dataField = fields.find((_f, i) => fields[i - 1] === 'data');
           await redisConnection.xadd(
             DLQ_STREAM,
             '*',
@@ -221,7 +221,7 @@ async function processPendingMessages(): Promise<void> {
       return;
     }
 
-    for (const [messageId, consumer, idleTime, deliveryCount] of pending) {
+    for (const [messageId, consumer, idleTime, _deliveryCount] of pending) {
       if (parseInt(idleTime) > 60000 && consumer === CONSUMER_NAME) {
         // Claim and process
         const claimed = await redisConnection.xclaim(
@@ -279,7 +279,7 @@ async function startKafkaWorker(): Promise<void> {
     eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
       try {
         const messageData: BookingData & { messageId: string } = JSON.parse(message.value?.toString() || '{}');
-        const { bookingId, userId, hotelId, checkIn, checkOut, messageId } = messageData;
+        const { bookingId, messageId } = messageData;
         
         logger.info(`[Kafka] Processing message from partition ${partition}`, {
           messageId,

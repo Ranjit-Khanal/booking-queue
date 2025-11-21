@@ -78,7 +78,7 @@ services:
     volumes:
       - ./api-service:/app
       - ./shared:/app/shared
-      - /app/node_modules
+      - api-node_modules:/app/node_modules
 
   # BullMQ Queue Service
   queue-service:
@@ -97,7 +97,8 @@ services:
         condition: service_healthy
     volumes:
       - ./queue-service:/app
-      - /app/node_modules
+      - ./shared:/app/shared
+      - queue-node_modules:/app/node_modules
 
   # Redis Streams Service
   stream-service:
@@ -116,7 +117,8 @@ services:
         condition: service_healthy
     volumes:
       - ./stream-service:/app
-      - /app/node_modules
+      - ./shared:/app/shared
+      - stream-node_modules:/app/node_modules
 
   # Kafka Service
   kafka-service:
@@ -134,20 +136,21 @@ services:
         condition: service_healthy
     volumes:
       - ./kafka-service:/app
-      - /app/node_modules
+      - ./shared:/app/shared
+      - kafka-node_modules:/app/node_modules
 
   # Worker Service (can be scaled)
   worker-service:
     build:
       context: .
       dockerfile: ./worker-service/Dockerfile
-    container_name: booking-worker-service
+    # Remove container_name to allow scaling
     environment:
       - NODE_ENV=production
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - KAFKA_BROKER=kafka:9093
-      - WORKER_ID=worker-1
+      - WORKER_ID=worker-${HOSTNAME}
     depends_on:
       redis:
         condition: service_healthy
@@ -155,9 +158,8 @@ services:
         condition: service_healthy
     volumes:
       - ./worker-service:/app
-      - /app/node_modules
-    deploy:
-      replicas: 2  # Can scale horizontally
+      - ./shared:/app/shared
+      - worker-node_modules:/app/node_modules
 
   # Monitoring Service
   monitoring-service:
@@ -179,7 +181,30 @@ services:
         condition: service_healthy
     volumes:
       - ./monitoring-service:/app
-      - /app/node_modules
+      - ./shared:/app/shared
+      - monitoring-node_modules:/app/node_modules
+
+  # Frontend Service
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    container_name: booking-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api-service
+      - monitoring-service
+    environment:
+      - VITE_API_URL=http://localhost:3000
+      - VITE_QUEUE_URL=http://localhost:3001
+      - VITE_MONITORING_URL=http://localhost:3004
 
 volumes:
   redis-data:
+  api-node_modules:
+  queue-node_modules:
+  stream-node_modules:
+  kafka-node_modules:
+  worker-node_modules:
+  monitoring-node_modules:
