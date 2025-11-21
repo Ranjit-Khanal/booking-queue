@@ -2,8 +2,8 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { Kafka, Producer, Admin } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
-import dotenv from 'dotenv';
-import { BookingData, KafkaMessageMetadata } from '../../shared/types';
+import * as dotenv from 'dotenv';
+import { BookingData, KafkaMessageMetadata } from '@shared/index';
 
 dotenv.config();
 
@@ -74,16 +74,11 @@ app.use(express.json());
 // Health check
 app.get('/health', async (_req: Request, res: Response) => {
   try {
-    const connected = producer.isConnected();
-    res.json({ 
-      status: 'ok', 
-      service: 'kafka-service',
-      topic: TOPIC,
-      kafka: connected ? 'connected' : 'disconnected'
-    });
+    await producer.connect();
+    return res.json({ status: 'ok', service: 'kafka-service', topic: TOPIC, kafka: 'connected' });
   } catch (error) {
     const err = error as Error;
-    res.status(500).json({ status: 'error', message: err.message });
+    return res.status(500).json({ status: 'error', message: err.message });
   }
 });
 
@@ -120,24 +115,25 @@ app.post('/messages', async (req: Request<{}, KafkaMessageMetadata, MessageReque
     });
 
     // Store message metadata
+    const offsetValue = result[0].offset;
     const metadata: KafkaMessageMetadata = {
       messageId,
       topic: TOPIC,
       partition: result[0].partition,
-      offset: result[0].offset,
+      offset: offsetValue !== undefined ? String(offsetValue) : '0',
       timestamp: new Date().toISOString()
     };
     
     messageStore.set(messageId, metadata);
 
-    res.status(201).json({
+    return res.status(201).json({
       ...metadata,
       status: 'queued'
     } as any);
   } catch (error) {
     const err = error as Error;
     console.error('Error sending message:', err);
-    res.status(500).json({ error: 'Failed to send message', message: err.message } as any);
+    return res.status(500).json({ error: 'Failed to send message', message: err.message } as any);
   }
 });
 
@@ -151,14 +147,14 @@ app.get('/messages/:messageId', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Message not found in metadata store' });
     }
 
-    res.json({
+    return res.json({
       ...metadata,
       status: 'queued'
     });
   } catch (error) {
     const err = error as Error;
     console.error('Error getting message:', err);
-    res.status(500).json({ error: 'Failed to get message', message: err.message } as any);
+    return res.status(500).json({ error: 'Failed to get message', message: err.message } as any);
   }
 });
 
@@ -174,7 +170,7 @@ app.get('/stats', async (_req: Request, res: Response) => {
     const topicInfo = metadata.topics.find(t => t.name === TOPIC);
     const dlqInfo = metadata.topics.find(t => t.name === DLQ_TOPIC);
 
-    res.json({
+    return res.json({
       topic: TOPIC,
       stats: {
         partitions: topicInfo ? topicInfo.partitions.length : 0,
@@ -185,7 +181,7 @@ app.get('/stats', async (_req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
     console.error('Error getting stats:', err);
-    res.status(500).json({ error: 'Failed to get stats', message: err.message } as any);
+    return res.status(500).json({ error: 'Failed to get stats', message: err.message } as any);
   }
 });
 

@@ -17,14 +17,15 @@ This project teaches:
 
 ## 🏗️ Architecture
 
-The system consists of 6 microservices:
+The system consists of 6 microservices and 1 frontend:
 
 1. **api-service** - HTTP REST API for booking requests
 2. **queue-service** - BullMQ queue management
 3. **stream-service** - Redis Streams operations
 4. **kafka-service** - Kafka producer/consumer management
 5. **worker-service** - Job processors for all queue types
-6. **monitoring-service** - Dashboard and metrics
+6. **monitoring-service** - Dashboard and metrics API
+7. **frontend** - React + TypeScript web interface
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architecture documentation.
 
@@ -67,8 +68,26 @@ This will start:
 - Kafka Service (port 3003)
 - Worker Service (2 instances)
 - Monitoring Service (port 3004)
+- Frontend (port 5173)
 
-### 4. Test the System
+### 4. Access the Frontend
+
+Open your browser and navigate to:
+```
+http://localhost:5173
+```
+
+The frontend provides:
+- 📊 **Dashboard** - Real-time monitoring of all queues
+- ➕ **Create Booking** - Create bookings via web form
+- 🔍 **Check Status** - View booking status across all queues
+
+### 5. Test the System
+
+#### Via Frontend (Recommended)
+Use the web interface at `http://localhost:5173` to create bookings and monitor the system.
+
+#### Via API (Alternative)
 
 #### Create a Booking (publishes to all 3 queues)
 

@@ -3,8 +3,8 @@ import cors from 'cors';
 import { Queue, Job } from 'bullmq';
 import Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
-import dotenv from 'dotenv';
-import { BookingData, JobData, QueueJobOptions, JobStatus } from '../../shared/types';
+import * as dotenv from 'dotenv';
+import { BookingData, QueueJobOptions, JobStatus,  } from '@shared/index';
 
 dotenv.config();
 
@@ -81,7 +81,7 @@ app.post('/jobs', async (req: Request<{}, any, AddJobRequest>, res: Response) =>
       }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       jobId: job.id,
       name: job.name,
       data: job.data,
@@ -90,7 +90,7 @@ app.post('/jobs', async (req: Request<{}, any, AddJobRequest>, res: Response) =>
   } catch (error) {
     const err = error as Error;
     console.error('Error adding job:', err);
-    res.status(500).json({ error: 'Failed to add job', message: err.message });
+   return res.status(500).json({ error: 'Failed to add job', message: err.message });
   }
 });
 
@@ -122,7 +122,7 @@ app.post('/jobs/delayed', async (req: Request<{}, any, DelayedJobRequest>, res: 
       }
     );
 
-    res.status(201).json({
+     return res.status(201).json({
       jobId: job.id,
       name: job.name,
       delay: delay,
@@ -132,7 +132,7 @@ app.post('/jobs/delayed', async (req: Request<{}, any, DelayedJobRequest>, res: 
   } catch (error) {
     const err = error as Error;
     console.error('Error adding delayed job:', err);
-    res.status(500).json({ error: 'Failed to add delayed job', message: err.message });
+    return res.status(500).json({ error: 'Failed to add delayed job', message: err.message });
   }
 });
 
@@ -163,11 +163,11 @@ app.get('/jobs/:jobId', async (req: Request, res: Response) => {
       timestamp: job.timestamp
     };
 
-    res.json(jobStatus);
+    return res.json(jobStatus);
   } catch (error) {
     const err = error as Error;
     console.error('Error getting job:', err);
-    res.status(500).json({ error: 'Failed to get job', message: err.message });
+    return res.status(500).json({ error: 'Failed to get job', message: err.message });
   }
 });
 
@@ -182,7 +182,7 @@ app.get('/stats', async (_req: Request, res: Response) => {
       bookingQueue.getDelayedCount()
     ]);
 
-    res.json({
+    return res.json({
       queue: 'booking-queue',
       stats: {
         waiting,
@@ -196,7 +196,7 @@ app.get('/stats', async (_req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
     console.error('Error getting stats:', err);
-    res.status(500).json({ error: 'Failed to get stats', message: err.message });
+    return res.status(500).json({ error: 'Failed to get stats', message: err.message });
   }
 });
 
@@ -228,7 +228,7 @@ app.get('/jobs/state/:state', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Invalid state' });
     }
 
-    res.json({
+      return  res.json({
       state,
       jobs: jobs.map(job => ({
         id: job.id,
@@ -241,7 +241,7 @@ app.get('/jobs/state/:state', async (req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
     console.error('Error getting jobs by state:', err);
-    res.status(500).json({ error: 'Failed to get jobs', message: err.message });
+    return res.status(500).json({ error: 'Failed to get jobs', message: err.message });
   }
 });
 

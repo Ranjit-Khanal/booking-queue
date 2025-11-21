@@ -2,8 +2,8 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import Redis from 'ioredis';
 import { v4 as uuidv4 } from 'uuid';
-import dotenv from 'dotenv';
-import { BookingData, StreamMessage } from '../../shared/types';
+import * as dotenv from 'dotenv';
+import { BookingData, StreamMessage } from '@shared/index';
 
 dotenv.config();
 
@@ -96,7 +96,7 @@ app.post('/messages', async (req: Request<{}, StreamMessage, MessageRequest>, re
       'data', JSON.stringify(message)
     ) as string;
 
-    res.status(201).json({
+    return res.status(201).json({
       messageId,
       streamId,
       stream: STREAM_NAME,
@@ -105,7 +105,7 @@ app.post('/messages', async (req: Request<{}, StreamMessage, MessageRequest>, re
   } catch (error) {
     const err = error as Error;
     console.error('Error adding message:', err);
-    res.status(500).json({ error: 'Failed to add message', message: err.message } as any);
+    return res.status(500).json({ error: 'Failed to add message', message: err.message } as any);
   }
 });
 
@@ -117,7 +117,7 @@ app.get('/messages/:messageId', async (req: Request, res: Response) => {
     // Read from stream and find message
     const messages = await redis.xrange(STREAM_NAME, '-', '+', 'COUNT', 1000) as Array<[string, string[]]>;
     
-    const found = messages.find(([id, fields]) => {
+    const found = messages.find(([_id, fields]) => {
       const dataIndex = fields.indexOf('data');
       if (dataIndex !== -1 && dataIndex < fields.length - 1) {
         try {
@@ -138,7 +138,7 @@ app.get('/messages/:messageId', async (req: Request, res: Response) => {
     const dataIndex = fields.indexOf('data');
     const messageData = dataIndex !== -1 ? JSON.parse(fields[dataIndex + 1]) : null;
 
-    res.json({
+    return res.json({
       messageId,
       streamId,
       data: messageData,
@@ -147,7 +147,7 @@ app.get('/messages/:messageId', async (req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
     console.error('Error getting message:', err);
-    res.status(500).json({ error: 'Failed to get message', message: err.message } as any);
+    return res.status(500).json({ error: 'Failed to get message', message: err.message } as any);
   }
 });
 
@@ -161,7 +161,7 @@ app.get('/stats', async (_req: Request, res: Response) => {
     const pendingInfo = await redis.xpending(STREAM_NAME, 'booking-workers') as [string, string, string, string] | null;
     const pendingCount = pendingInfo ? parseInt(pendingInfo[0]) : 0;
 
-    res.json({
+    return res.json({
       stream: STREAM_NAME,
       stats: {
         totalMessages: length,
@@ -172,7 +172,7 @@ app.get('/stats', async (_req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
     console.error('Error getting stats:', err);
-    res.status(500).json({ error: 'Failed to get stats', message: err.message } as any);
+    return res.status(500).json({ error: 'Failed to get stats', message: err.message } as any);
   }
 });
 
@@ -197,7 +197,7 @@ app.get('/messages', async (req: Request, res: Response) => {
       return result;
     });
 
-    res.json({
+    return res.json({
       stream: STREAM_NAME,
       count: formatted.length,
       messages: formatted
@@ -205,7 +205,7 @@ app.get('/messages', async (req: Request, res: Response) => {
   } catch (error) {
     const err = error as Error;
     console.error('Error reading messages:', err);
-    res.status(500).json({ error: 'Failed to read messages', message: err.message } as any);
+    return res.status(500).json({ error: 'Failed to read messages', message: err.message } as any);
   }
 });
 

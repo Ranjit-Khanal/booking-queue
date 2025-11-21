@@ -1,9 +1,9 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
-import { BookingData, BookingResponse, QueueResponse } from '../../shared/types';
+import { BookingData, BookingResponse, QueueResponse } from '@shared/index';
 
 dotenv.config();
 
@@ -100,11 +100,11 @@ app.post('/api/bookings', async (req: Request<{}, BookingResponse, BookingReques
       }
     };
 
-    res.status(201).json(results);
+   return res.status(201).json(results);
   } catch (error) {
     const err = error as Error;
     console.error('Error creating booking:', err);
-    res.status(500).json({ error: 'Failed to create booking', message: err.message } as any);
+   return res.status(500).json({ error: 'Failed to create booking', message: err.message } as any);
   }
 });
 
@@ -119,7 +119,7 @@ app.get('/api/bookings/:bookingId/status', async (req: Request, res: Response) =
       axios.get(`${KAFKA_SERVICE_URL}/messages/${bookingId}`).catch(() => ({ data: null }))
     ]);
 
-    res.json({
+   return res.json({
       bookingId,
       status: {
         bullmq: bullmqStatus.status === 'fulfilled' ? bullmqStatus.value.data : null,
@@ -129,7 +129,7 @@ app.get('/api/bookings/:bookingId/status', async (req: Request, res: Response) =
     });
   } catch (error) {
     const err = error as Error;
-    res.status(500).json({ error: 'Failed to get booking status', message: err.message } as any);
+   return res.status(500).json({ error: 'Failed to get booking status', message: err.message } as any);
   }
 });
 
@@ -159,7 +159,7 @@ app.post('/api/bookings/delayed', async (req: Request<{}, any, DelayedBookingReq
       delay: delaySeconds * 1000 // Convert to milliseconds
     });
 
-    res.status(201).json({
+   return res.status(201).json({
       bookingId,
       delaySeconds,
       jobId: result.data.jobId,
@@ -167,7 +167,7 @@ app.post('/api/bookings/delayed', async (req: Request<{}, any, DelayedBookingReq
     });
   } catch (error) {
     const err = error as Error;
-    res.status(500).json({ error: 'Failed to create delayed booking', message: err.message } as any);
+    return res.status(500).json({ error: 'Failed to create delayed booking', message: err.message } as any);
   }
 });
 

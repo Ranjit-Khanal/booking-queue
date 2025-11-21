@@ -1,9 +1,9 @@
-import { Worker, Queue, Job } from 'bullmq';
+import { Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
 import { Kafka, Consumer, Producer, EachMessagePayload } from 'kafkajs';
 import winston from 'winston';
-import dotenv from 'dotenv';
-import { BookingData } from '../../shared/types';
+import * as dotenv from 'dotenv';
+import { BookingData } from '@shared/index';
 
 dotenv.config();
 
@@ -32,7 +32,7 @@ const redisConnection = new Redis({
 });
 
 // ==================== BULLMQ WORKER ====================
-const bookingQueue = new Queue('booking-queue', { connection: redisConnection });
+// const bookingQueue = new Queue('booking-queue', { connection: redisConnection });
 
 interface BookingJobData extends BookingData {
   jobId: string;
@@ -53,7 +53,7 @@ const bullmqWorker = new Worker(
     logger.info(`[BullMQ] Processing job ${job.id}`, { workerId: WORKER_ID, jobId: job.id });
     
     try {
-      const { bookingId, userId, hotelId, checkIn, checkOut } = job.data;
+      const { bookingId } = job.data;
       
       // Simulate booking processing steps
       await job.updateProgress(10);
@@ -132,6 +132,13 @@ async function initializeStreamConsumerGroup(): Promise<void> {
   }
 }
 
+/**
+ * Reads and processes messages from the Redis stream consumer group, handling booking workflows.
+ *
+ * For each message it parses the `data` payload, runs the booking processing steps, and acknowledges successful messages.
+ * On processing errors it checks a `retryCount` field: messages with fewer than 3 attempts are left unacknowledged for retry, and messages that reached 3 attempts are moved to the DLQ with error metadata and then acknowledged.
+ * Read-time timeout errors are ignored; other read errors are logged.
+ */
 async function processStreamMessages(): Promise<void> {
   try {
     // Read messages from stream using consumer group
@@ -146,7 +153,7 @@ async function processStreamMessages(): Promise<void> {
       return;
     }
 
-    const [stream, streamMessages] = messages[0];
+    const [_stream, streamMessages] = messages[0];
     
     for (const [messageId, fields] of streamMessages) {
       try {
@@ -159,7 +166,7 @@ async function processStreamMessages(): Promise<void> {
         }
         
         const data: BookingData = JSON.parse(messageData.data);
-        const { bookingId, userId, hotelId, checkIn, checkOut } = data;
+        const { bookingId } = data;
         
         // Process booking (same logic as BullMQ)
         await simulateWork(2000); // Validate
@@ -180,7 +187,7 @@ async function processStreamMessages(): Promise<void> {
         logger.error(`[Streams] Error processing message ${messageId}:`, err);
         
         // Check retry count (stored in message metadata)
-        const retryCountField = fields.find((f, i) => fields[i - 1] === 'retryCount');
+        const retryCountField = fields.find((_f, i) => fields[i - 1] === 'retryCount');
         const retryCount = parseInt(retryCountField || '0');
         
         if (retryCount < 3) {
@@ -188,7 +195,7 @@ async function processStreamMessages(): Promise<void> {
           logger.info(`[Streams] Message ${messageId} will be retried (attempt ${retryCount + 1})`);
         } else {
           // Max retries reached, move to DLQ
-          const dataField = fields.find((f, i) => fields[i - 1] === 'data');
+          const dataField = fields.find((_f, i) => fields[i - 1] === 'data');
           await redisConnection.xadd(
             DLQ_STREAM,
             '*',
@@ -212,7 +219,11 @@ async function processStreamMessages(): Promise<void> {
   }
 }
 
-// Process pending messages (from PEL)
+/**
+ * Claim and reprocess Redis Stream pending entries assigned to this consumer that have been idle for more than 60 seconds.
+ *
+ * Scans the pending entries list (PEL) for this consumer group, claims eligible messages for this consumer, and triggers their processing. Errors encountered during the operation are logged.
+ */
 async function processPendingMessages(): Promise<void> {
   try {
     const pending = await redisConnection.xpending(STREAM_NAME, CONSUMER_GROUP, '-', '+', 10) as Array<[string, string, string, string]> | null;
@@ -221,7 +232,7 @@ async function processPendingMessages(): Promise<void> {
       return;
     }
 
-    for (const [messageId, consumer, idleTime, deliveryCount] of pending) {
+    for (const [messageId, consumer, idleTime, _deliveryCount] of pending) {
       if (parseInt(idleTime) > 60000 && consumer === CONSUMER_NAME) {
         // Claim and process
         const claimed = await redisConnection.xclaim(
@@ -268,6 +279,11 @@ const consumer: Consumer = kafka.consumer({ groupId: 'booking-workers' });
 const TOPIC = 'booking-events';
 const DLQ_TOPIC = 'booking-events-dlq';
 
+/**
+ * Starts the Kafka consumer and producer, processes booking messages from the configured topic, and forwards failed messages to the DLQ.
+ *
+ * The consumer is connected and subscribed to the configured topic, and an internal message handler performs the booking processing steps for each message. If processing fails, the original message and error metadata are published to the configured DLQ topic.
+ */
 async function startKafkaWorker(): Promise<void> {
   await consumer.connect();
   await consumer.subscribe({ topic: TOPIC, fromBeginning: false });
@@ -279,7 +295,7 @@ async function startKafkaWorker(): Promise<void> {
     eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
       try {
         const messageData: BookingData & { messageId: string } = JSON.parse(message.value?.toString() || '{}');
-        const { bookingId, userId, hotelId, checkIn, checkOut, messageId } = messageData;
+        const { bookingId, messageId } = messageData;
         
         logger.info(`[Kafka] Processing message from partition ${partition}`, {
           messageId,
@@ -366,4 +382,3 @@ start().catch((error: Error) => {
   logger.error('Failed to start workers:', error);
   process.exit(1);
 });
-

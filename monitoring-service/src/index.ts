@@ -4,8 +4,8 @@ import { Queue, Job } from 'bullmq';
 import Redis from 'ioredis';
 import { Kafka, Admin } from 'kafkajs';
 import axios, { AxiosError } from 'axios';
-import dotenv from 'dotenv';
-import { DashboardData, HealthStatus } from '../../shared/types';
+import * as dotenv from 'dotenv';
+import { DashboardData } from '@shared/index';
 
 dotenv.config();
 
