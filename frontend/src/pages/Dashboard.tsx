@@ -4,6 +4,13 @@ import type { DashboardData, ServiceHealth } from '../types';
 import { format } from 'date-fns';
 import '../styles/Dashboard.css';
 
+/**
+ * Render the System Dashboard page showing service health, queue statistics, and a last-updated timestamp.
+ *
+ * The component fetches dashboard metrics and service health from the monitoring API, updates view state, and refreshes data periodically (every 5 seconds). It also exposes a manual refresh button and displays loading or error states when appropriate.
+ *
+ * @returns The JSX element containing the dashboard UI.
+ */
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [serviceHealth, setServiceHealth] = useState<ServiceHealth[]>([]);
@@ -164,4 +171,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

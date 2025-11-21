@@ -3,6 +3,11 @@ import { bookingApi } from '../services/api';
 import type { BookingRequest, BookingResponse } from '../types';
 import '../styles/BookingForm.css';
 
+/**
+ * Renders a booking creation form with inputs for user ID, hotel ID, check-in/check-out dates, guests, and room type; supports an optional delayed scheduling mode and displays submission results including per-queue status for BullMQ, Redis Streams, and Kafka.
+ *
+ * @returns The JSX element for the booking form UI.
+ */
 export default function BookingForm() {
   const [formData, setFormData] = useState<BookingRequest>({
     userId: '',
@@ -227,4 +232,3 @@ export default function BookingForm() {
     </div>
   );
 }
-
