@@ -33,6 +33,6 @@ RUN npm install
 COPY worker-service/src ./src
 
 # Build TypeScript
-RUN npm run build
+# RUN npm run build
 
 CMD ["npm", "start"]

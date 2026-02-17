@@ -3,7 +3,7 @@ import cors from 'cors';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
-import { BookingData, BookingResponse, QueueResponse } from '@shared/index';
+import { BookingData,BookingResponse,QueueResponse } from '../shared/index';
 
 dotenv.config();
 
