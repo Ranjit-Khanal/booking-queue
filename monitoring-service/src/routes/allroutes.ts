@@ -1,8 +1,8 @@
 import express from 'express';
-import { getBullMQQueueData } from 'src/controllers/bullmqQueue.controller';
-import { dashboard } from 'src/controllers/dashboard.controller';
-import { healthCheck } from 'src/controllers/healthCheck.controller';
-import { getRedisStreamsData } from 'src/controllers/redisStreams.controller';
+import { getBullMQQueueData } from '../controllers/bullmqQueue.controller';
+import { dashboard } from '..//controllers/dashboard.controller';
+import { healthCheck } from '../controllers/healthCheck.controller';
+import { getRedisStreamsData } from '../controllers/redisStreams.controller';
 
 const router = express.Router();
 

@@ -22,11 +22,15 @@ export const dashboard = async (_req: Request, res: Response) => {
 
     // Kafka stats (simplified)
     const admin: Admin = kafka.admin();
-    await admin.connect();
-    const metadata = await admin.
-    fetchTopicMetadata({ topics: ['booking-events',] });
-
-    await admin.disconnect();
+    let metadata;
+    try {
+      await admin.connect();
+      metadata = await admin.fetchTopicMetadata({
+        topics: ['booking-events', 'booking-events-dlq'],
+      });
+    } finally {
+      await admin.disconnect();
+    }
 
     const bookingTopic = metadata.topics.find(t => t.name === 'booking-events');
     const dlqTopic = metadata.topics.find(t => t.name === 'booking-events-dlq');
