@@ -1,6 +1,6 @@
 import express from 'express';
 import { getBullMQQueueData } from '../controllers/bullmqQueue.controller';
-import { dashboard } from '..//controllers/dashboard.controller';
+import { dashboard } from '../controllers/dashboard.controller';
 import { healthCheck } from '../controllers/healthCheck.controller';
 import { getRedisStreamsData } from '../controllers/redisStreams.controller';
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { bookingQueue, kafka, redis } from '..';
 import { Admin } from 'kafkajs';
-import { DashboardData } from 'src/types/global.types';
+import { DashboardData } from '../types/global.types';
 
 export const dashboard = async (_req: Request, res: Response) => {
   try {
