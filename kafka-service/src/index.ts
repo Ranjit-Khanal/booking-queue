@@ -3,7 +3,7 @@ import cors from 'cors';
 import { Kafka, Producer, Admin } from 'kafkajs';
 import { v4 as uuidv4 } from 'uuid';
 import * as dotenv from 'dotenv';
-import { BookingData, KafkaMessageMetadata } from '@shared/index';
+import { BookingData, KafkaMessageMetadata } from './shared/index';
 
 dotenv.config();
 

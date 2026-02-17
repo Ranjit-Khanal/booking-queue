@@ -7,9 +7,9 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["./shared/dist/*"]
+      "@shared/*": ["src/shared/dist/*"]
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "shared"]
+  "exclude": ["node_modules", "dist", "src/shared"]
 }

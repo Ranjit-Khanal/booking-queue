@@ -26,7 +26,7 @@ export const dashboard = async (_req: Request, res: Response) => {
     try {
       await admin.connect();
       metadata = await admin.fetchTopicMetadata({
-        topics: ['booking-events', 'booking-events-dlq'],
+        topics: ['booking-events'],
       });
     } finally {
       await admin.disconnect();
